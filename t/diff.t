@@ -5,6 +5,20 @@ use Test::Differences;
 
 BEGIN { use_ok('Data::Difference', 'data_diff'); }
 
+package over;
+use overload '""' => sub { $_[0]->{thing} }, fallback => 1;
+sub new {
+  my $class = shift;
+  my $thing = shift;
+  return bless { thing => $thing }, $class
+}
+
+package main;
+
+my $one = over->new("one");
+my $uno = over->new("one");
+my $two = over->new("two");
+
 my @tests = (
   {a => undef, b => undef, out => []},
   {a => 1,     b => 2,     out => [{path => [], a => 1, b => 2}]},
@@ -18,6 +32,29 @@ my @tests = (
       {path => ['W'], a => 2, b => 4},
     ]
   },
+
+  # overload tests
+
+  { a => $one, b => $one, out => [] },
+  { a => $one, b => $uno, out => [] },
+  { a => $two, b => $one, out => [ { path => [], a => $two, b => $one } ] },
+
+  { a => [$one], b => [$one], out => [] },
+  { a => [$one], b => [$uno], out => [] },
+  { a => [$two], b => [$one], out => [ { path => [ 0 ], a => $two, b => $one } ] },
+
+  { a => { t => $one }, b => { t => $one }, out => [] },
+  { a => { t => $one }, b => { t => $uno }, out => [] },
+  { a => { t => $two }, b => { t => $one }, out => [ { path => [ 't' ], a => $two, b => $one } ] },
+
+  { a => "one", b => $one, out => [] },
+  { a => $one, b => "one", out => [] },
+
+  { a => ["one"], b => [$one], out => [] },
+  { a => [$one], b => ["one"], out => [] },
+
+  { a => { t => "one"}, b => { t => $one }, out => [] },
+  { a => { t => $one}, b => { t => "one" }, out => [] },
 );
 
 foreach my $t (@tests) {

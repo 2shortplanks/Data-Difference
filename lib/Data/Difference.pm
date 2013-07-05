@@ -5,11 +5,12 @@ use warnings;
 use base 'Exporter';
 
 our @EXPORT_OK = qw(data_diff);
+require overload;
 
 sub data_diff {
   my ($a, $b) = @_;
 
-  if (ref($a)) {
+  if (ref($a) && !overload::Overloaded($a)) {
     if (my $sub = __PACKAGE__->can("_diff_" . ref($a))) {
       return $sub->($a, $b);
     }
@@ -39,7 +40,7 @@ sub _diff_HASH {
     elsif (!exists $b->{$k}) {
       push @diff, {path => [@path, $k], a => $a->{$k}};
     }
-    elsif (ref($a->{$k})) {
+    elsif (ref($a->{$k}) && !overload::Overloaded($a->{$k})) {
       if (my $sub = __PACKAGE__->can("_diff_" . ref($a->{$k}))) {
         push @diff, $sub->($a->{$k}, $b->{$k}, @path, $k);
       }
@@ -69,7 +70,7 @@ sub _diff_ARRAY {
     elsif ($i > $#$b) {
       push @diff, {path => [@path, $i], a => $a->[$i]};
     }
-    elsif (ref($a->[$i])) {
+    elsif (ref($a->[$i]) && !overload::Overloaded($a->[$i])) {
       if (my $sub = __PACKAGE__->can("_diff_" . ref($a->[$i]))) {
         push @diff, $sub->($a->[$i], $b->[$i], @path, $i);
       }
@@ -126,6 +127,13 @@ Data::Difference - Compare simple hierarchical data
 
 C<Data::Difference> will compare simple data structures returning a list of details about what was
 added, removed or changed. It will currently handle SCALARs, HASH references and ARRAY references.
+
+Objects will be considered identical if they are the same object, or if they
+implement overloading, unless they do not C<ne> the thing they are being
+compared against (i.e. in most cases if they stringify to the same thing.)
+
+Other forms of referneces will be considered identical if they reference the
+same thing.
 
 Each change is returned as a hash with the following element.
 
